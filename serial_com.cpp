@@ -1,9 +1,12 @@
-#include<windows.h>
-#include<iostream>
+#include <windows.h>
+#include <iostream>
+#include <string>
 
-std::string GetErrorFromUART(HANDLE hSerial)
+using namespace std;
+
+string GetErrorFromUART(HANDLE hSerial)
 {
-    std::string error;
+    string error;
     char buffer;
     DWORD bytesRead;
 
@@ -11,8 +14,8 @@ std::string GetErrorFromUART(HANDLE hSerial)
     {
         if (!ReadFile(hSerial, &buffer, sizeof(buffer), &bytesRead, NULL))
         {
-            std::cerr << "Hata mesaji alinamadi" << std::endl;
-            return 0;
+            cerr << "Hata mesaji alinamadi" << endl;
+            return "";
         }
 
         if (bytesRead > 0)
@@ -35,14 +38,15 @@ int main()
     hSerial = CreateFileA("COM4", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hSerial == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "Seri port acma hatasi!" << std::endl;
+        cerr << "Seri port acma hatasi!" << endl;
         return 1;
     }
 
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+
     if (!GetCommState(hSerial, &dcbSerialParams))
     {
-        std::cerr << "iletisim gerceklesmedi" << std::endl;
+        cerr << "iletisim gerceklesmedi" << endl;
         CloseHandle(hSerial);
         return 1;
     }
@@ -51,36 +55,38 @@ int main()
     dcbSerialParams.ByteSize = 8;
     dcbSerialParams.Parity = NOPARITY;
     dcbSerialParams.StopBits = ONESTOPBIT;
-    
+
     if (!SetCommState(hSerial, &dcbSerialParams))
     {
-        std::cerr << "İletisim durumu ayarlanamadi!" << std::endl;
-        CloseHandle(hSerial);
-        return 1;
-    }
-    
-    char data[] = "M600000000\r"; // gönderilecek argümanlar
-    char database;
-    std::cin>> database;
-    DWORD bytesWritten;
-    if (!WriteFile(hSerial, data, sizeof(data) - 1, &bytesWritten, NULL))
-    {
-        std::cerr << "Mesaj gönderilemedi!" << std::endl;
+        cerr << "İletisim Parametreleri Dogru Degil" << endl;
         CloseHandle(hSerial);
         return 1;
     }
 
-    std::string uartError = GetErrorFromUART(hSerial);
+    string userInput;
+    cout << "Gonderilecek sayiyi girin: ";
+    getline(cin, userInput);
+
+    string data = userInput + "\r";
+    DWORD bytesWritten;
+    if (!WriteFile(hSerial, data.c_str(), data.length(), &bytesWritten, NULL))
+    {
+        cerr << "Mesaj gönderilemedi" << endl;
+        CloseHandle(hSerial);
+        return 1;
+    }
+
+    string uartError = GetErrorFromUART(hSerial);
 
     if (!uartError.empty())
     {
-        std::cout << "Hata mesaji: " << uartError << std::endl;
+        cout << "Hata mesaji: " << uartError << endl;
     }
     else
     {
-        std::cout << "Hata mesaji alinamadi" << std::endl;
+        cout << "Hata mesaji alinamadi" << endl;
     }
-    
+
     CloseHandle(hSerial);
     return 0;
 }
