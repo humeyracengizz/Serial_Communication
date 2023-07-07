@@ -1,7 +1,7 @@
 #include<windows.h>
 #include<iostream>
 
-/*std::string GetErrorFromUART(HANDLE hSerial)
+std::string GetErrorFromUART(HANDLE hSerial)
 {
     std::string error;
     char buffer;
@@ -20,33 +20,6 @@
             error += buffer;
         }
         if (buffer == '\r')
-        {
-            break;
-        }
-    }
-    return error;
-}
-*/
-
-std::string GetErrorFromUART(HANDLE hSerial)
-{
-    std::string error;
-    char buffer;
-    DWORD bytesRead;
-
-    for(int i = 0; ;buffer++)
-    {
-        if (!ReadFile(hSerial, &buffer, sizeof(buffer), &bytesRead, NULL))
-        {
-            std::cerr << "Hata mesaji alinamadi" << std::endl;
-            return 0;
-        }
-
-        if (bytesRead > 0)
-        {
-            error += buffer;
-        }
-        if (buffer == '\r\n')
         {
             break;
         }
@@ -86,7 +59,7 @@ int main()
         return 1;
     }
     
-    char data[] = "M600000000\r";
+    char data[] = "M600000000\r"; // gönderilecek argümanlar
     char database;
     std::cin>> database;
     DWORD bytesWritten;
