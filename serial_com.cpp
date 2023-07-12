@@ -90,3 +90,84 @@ int main()
     CloseHandle(hSerial);
     return 0;
 }
+
+---------------------------------------------------------------UBUNTU------------------------------------------------------
+
+#include <iostream>
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <cstring>
+
+int main() {
+    const char* portPath = "/dev/ttyUSB2";
+    struct termios serialParams;
+    int serialPort = open(portPath, O_RDWR | O_NOCTTY);
+
+    if (serialPort == -1) {
+        std::cerr << "Seri port açilamadi!" << std::endl;
+        return 1;
+    }
+
+    struct termios tty;
+    if (tcgetattr(serialPort, &tty) != 0) {
+        std::cerr << "Seri port ayarlari alinamadi!" << std::endl;
+        return 1;
+    }
+
+    cfsetispeed(&tty, B9600);
+    cfsetospeed(&tty, B9600);
+    tty.c_cflag |= CS8;
+    tty.c_cflag &= ~PARENB;
+    tty.c_cflag &= ~CSTOPB;
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+
+    if (tcsetattr(serialPort, TCSANOW, &tty) != 0) {
+        std::cerr << "Seri port ayarlari uygulanamadi!" << std::endl;
+        return 1;
+    }
+
+    std::string command;
+    std::cout << "Cihaza gönderilecek komutu girin: ";
+    std::getline(std::cin, command);
+
+    command += '\r';
+
+    int bytesWritten = write(serialPort, command.c_str(), command.length());
+    if (bytesWritten < 0) {
+        std::cerr << "Seri porta yazma hatasi!" << std::endl;
+        return 1;
+    } else {
+        std::cout << "Komut seri porta gönderildi." << std::endl;
+    }
+
+    tcflush(serialPort, TCIOFLUSH);
+    usleep(100000);
+    tcdrain(serialPort);
+
+    char readBuffer[1024];
+    memset(readBuffer, 0, sizeof(readBuffer));
+    int totalBytesRead = 0;
+    int bytesRead = read(serialPort, readBuffer + totalBytesRead, sizeof(readBuffer) - 1 - totalBytesRead);
+    
+    while (totalBytesRead < sizeof(readBuffer) - 1) {
+
+        if (bytesRead <= 0) {
+            std::cerr << "Seri porttan okuma hatasi!" << std::endl;
+            return 1;
+        }
+        totalBytesRead += bytesRead;
+
+        if (readBuffer[totalBytesRead - 1] == '\r') {
+            break;
+        }
+    }
+
+    readBuffer[totalBytesRead] = '\0';
+
+    std::cout << "Seri porttan gelen yanit: " << readBuffer << std::endl;
+
+    close(serialPort);
+    return 0;
+}
+
