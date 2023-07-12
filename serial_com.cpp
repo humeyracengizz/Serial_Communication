@@ -98,9 +98,57 @@ int main()
 #include <termios.h>
 #include <unistd.h>
 #include <cstring>
+#include<openssl/evp.h>
+
+
+const unsigned char key[] = { 0x64, 0xF5, 0xD9, 0x2F, 0x1C, 0x00, 0x3A, 0x00, 0x64, 0xF5, 0xD9, 0x2F, 0x1C, 0x00, 0x3A, 0x00 };
+
+
+std::string EncryptAES(const std::string& plainText)  
+{
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx)
+    {
+        std::cout << "Failed to create cipher context." << std::endl;
+        return "";
+    }
+
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), nullptr, key, nullptr) != 1)
+    {
+        std::cout << "Failed to initialize cipher." << std::endl;
+        EVP_CIPHER_CTX_free(ctx);
+        return "";
+    }
+
+    int encryptedLength = 0;
+    int finalLength = 0;
+
+    // Şifreleme için gerekli belleği elde etme
+    int maxOutputLength = plainText.size() + EVP_CIPHER_CTX_block_size(ctx);
+    std::string encryptedText(maxOutputLength, '\0');
+
+    if (EVP_EncryptUpdate(ctx, reinterpret_cast<unsigned char*>(&encryptedText[0]), &encryptedLength, reinterpret_cast<const unsigned char*>(plainText.c_str()), plainText.size()) != 1)
+    {
+        std::cout << "Failed to encrypt data." << std::endl;
+        EVP_CIPHER_CTX_free(ctx);
+        return "";
+    }
+
+    if (EVP_EncryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(&encryptedText[encryptedLength]), &finalLength) != 1)
+    {
+        std::cout << "Failed to finalize encryption." << std::endl;
+        EVP_CIPHER_CTX_free(ctx);
+        return "";
+    }
+
+    encryptedText.resize(encryptedLength + finalLength);
+    EVP_CIPHER_CTX_free(ctx);
+
+    return encryptedText;
+}
 
 int main() {
-    const char* portPath = "/dev/ttyUSB2";
+    const char* portPath = "/dev/ttyUSB0";
     struct termios serialParams;
     int serialPort = open(portPath, O_RDWR | O_NOCTTY);
 
@@ -131,7 +179,23 @@ int main() {
     std::cout << "Cihaza gönderilecek komutu girin: ";
     std::getline(std::cin, command);
 
-    command += '\r';
+    if (command[0] == 'S' || command[0] == 'C')
+        {
+            
+            std::cout << "encrypted" << std::endl;
+            std::string commandString = command.substr(1);
+            std::string encryptedCommand = EncryptAES(commandString);
+
+            // Enkripte edilen komutun başına komutun türünü (S veya C) ekleyin
+            command = command[0] + encryptedCommand;
+        }
+        else
+        {
+            std::cout << "not encrypted" << std::endl;
+            command = command;
+        }
+        
+        command += '\r';
 
     int bytesWritten = write(serialPort, command.c_str(), command.length());
     if (bytesWritten < 0) {
@@ -170,4 +234,3 @@ int main() {
     close(serialPort);
     return 0;
 }
-
